@@ -59,14 +59,14 @@ static func from_json(data: Dictionary, short: bool = false) -> Message:
 	var _timestamp: int = Time.get_unix_time_from_datetime_string(iso_timestamp)
 	var _nonce: String = data.get("nonce", "")
 	
-	var content: String = data["content"]
+	var _content: String = data["content"]
 	
 	if short:
-		content = content.replace("\n", "")
-		if content.length() > 120:
-			content = content.substr(0, 120) + "…"
+		_content = _content.replace("\n", "")
+		if _content.length() > 120:
+			_content = _content.substr(0, 120) + "…"
 	
-	var _tokens: Array[Token] = Token.parse(content)
+	var _tokens: Array[Token] = Token.parse(_content)
 	
 	for attachment: Dictionary in attachments:
 		if attachment.has("url"):
