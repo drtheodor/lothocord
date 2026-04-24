@@ -10,8 +10,10 @@ func _ready() -> void:
 	self._low_processor_sleep = OS.low_processor_usage_mode_sleep_usec
 	self._max_fps = Engine.max_fps
 	
-	PhysicsServer2D.set_active(false);
-	PhysicsServer3D.set_active(false);
+	PhysicsServer2D.set_active(false)
+	PhysicsServer3D.set_active(false)
+	NavigationServer2D.set_active(false)
+	NavigationServer3D.set_active(false)
 
 func _notification(what: int) -> void:
 	match what:

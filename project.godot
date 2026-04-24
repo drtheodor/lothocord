@@ -54,6 +54,11 @@ window/ios/suppress_ui_gesture=false
 
 theme/custom="uid://b02bplt5hyd3m"
 
+[navigation]
+
+2d/navigation_engine="Dummy"
+3d/navigation_engine="Dummy"
+
 [physics]
 
 common/physics_ticks_per_second=1
