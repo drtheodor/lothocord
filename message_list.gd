@@ -33,6 +33,8 @@ var _sel_end: Dictionary[int, int] = {}
 var _is_selecting: bool = false
 var _last_click_message: int = -1
 
+var _scrollable: bool = false
+
 # Cache for per-message TextParagraph
 var _layout_cache: Dictionary[int, TextParagraph] = {}
 
@@ -46,6 +48,9 @@ func _ready() -> void:
 	_time_font = ThemeDB.fallback_font
 	_text_font = ThemeDB.fallback_font
 	set_process_input(true)
+	
+	self.mouse_entered.connect(_mouse_entered)
+	self.mouse_exited.connect(_mouse_exited)
 
 # ------------------------------------------------------------------------------
 # Public API
@@ -69,11 +74,9 @@ func add_message(msg: Message) -> void:
 	_update_total_height()
 	queue_redraw()
 
-# ------------------------------------------------------------------------------
-# Scrolling (bottom anchored)
-# ------------------------------------------------------------------------------
+# Scrolling
 func _input(event: InputEvent) -> void:
-	if event is InputEventMouseButton:
+	if event is InputEventMouseButton and _scrollable:
 		if event.button_index == MOUSE_BUTTON_WHEEL_UP:
 			_scroll_offset += event.factor * 30   # scroll up -> move view up
 			_clamp_scroll()
@@ -84,6 +87,12 @@ func _input(event: InputEvent) -> void:
 			_clamp_scroll()
 			queue_redraw()
 			accept_event()
+
+func _mouse_entered() -> void:
+	_scrollable = true
+
+func _mouse_exited() -> void:
+	_scrollable = false
 
 func _clamp_scroll() -> void:
 	var max_scroll: float = max(0.0, _total_content_height - size.y)
@@ -157,7 +166,7 @@ func _draw() -> void:
 	
 	_update_layouts_if_needed()
 	
-	var current_y: float = size.y - _scroll_offset
+	var current_y: float = size.y + _scroll_offset
 	
 	for i: int in range(_messages.size() - 1, -1, -1):
 		var msg: Message = _messages[i]
@@ -302,7 +311,7 @@ func _gui_input(event: InputEvent) -> void:
 					queue_redraw()
 
 func _find_message_at_y(y_global: float) -> int:
-	var current_y: float = size.y - _scroll_offset
+	var current_y: float = size.y + _scroll_offset
 	for i: int in range(_messages.size() - 1, -1, -1):
 		var h: float = _get_item_height(i)
 		var item_top: float = current_y - h
@@ -333,7 +342,7 @@ func _get_character_index_at_pos(msg_idx: int, mouse_pos: Vector2) -> int:
 	return idx if idx >= 0 else -1
 
 func _get_item_y(msg_idx: int) -> float:
-	var y: float = size.y - _scroll_offset
+	var y: float = size.y + _scroll_offset
 	for i: int in range(_messages.size() - 1, msg_idx, -1):
 		y -= _get_item_height(i)
 	return y - _get_item_height(msg_idx)

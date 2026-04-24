@@ -105,6 +105,7 @@ func _fetch_messages() -> void:
 	self.last_message = null
 
 	for message: Message in messages:
+		await Discord.get_avatar(message.author_id, message.author_avatar)
 		message_list.add_message(message)
 
 	self.scroll_to_bottom()
