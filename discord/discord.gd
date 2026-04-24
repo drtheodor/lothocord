@@ -202,8 +202,11 @@ func _on_gateway_message(socket: WebSocketPeer, some_json: Variant) -> void:
 					return
 				
 				var message_json: Dictionary = some_data
-				var typing_user: Dictionary = message_json["member"]["user"]
-				self.on_typing.emit(User.from_json(typing_user))
+				var channel_id: String = message_json["channel_id"]
+				
+				if channel_id == self.channel:
+					var typing_user: Dictionary = message_json["member"]["user"]
+					self.on_typing.emit(User.from_json(typing_user))
 			
 			"MESSAGE_CREATE":
 				var some_data: Variant = json["d"]
