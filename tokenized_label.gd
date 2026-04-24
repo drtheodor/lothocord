@@ -51,7 +51,7 @@ func _handle_image(token: Message.ImageToken, max_image_width: int) -> void:
 	self.get_parent().add_child(texture_rect)
 	
 	var ext: String = Url.get_extension(token.url)
-	var tex: ImageTexture = await Discord.image_cache.get_or_request(token.url, ext)
+	var tex: Texture2D = await Discord.image_cache.get_or_request(token.url, ext)
 	
 	if not tex:
 		self._handle_link(token.url)
@@ -72,7 +72,7 @@ func _handle_image(token: Message.ImageToken, max_image_width: int) -> void:
 func _handle_emoji(token: Message.EmojiToken, emoji_size: int) -> void:
 	var emoji_name: String = token.emoji_name
 	
-	var texture: ImageTexture = Discord.image_cache.get_cached(token.url)
+	var texture: Texture2D = Discord.image_cache.get_cached(token.url)
 	
 	if texture:
 		self.add_image(texture, emoji_size, emoji_size, Color.WHITE, 

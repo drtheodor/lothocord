@@ -1,9 +1,10 @@
 var _http: HTTP
-var _cache: Dictionary[String, ImageTexture] = {}
+var _cache: Dictionary[String, Texture2D] = {}
 var _pending: Dictionary[String, Future] = {}
 
 # Disk cache directory
 const CACHE_DIR: String = "user://cache/"
+const DEFAULT_IMAGE: Texture2D = preload("res://icon.svg")
 
 func _init(http: HTTP) -> void:
 	self._http = http
@@ -13,11 +14,11 @@ func _init(http: HTTP) -> void:
 	if err != OK:
 		push_error("Failed to create cache dir: ", err)
 
-func get_cached(url: String) -> ImageTexture:
+func get_cached(url: String) -> Texture2D:
 	return _cache.get(url)
 
-func get_or_request(url: String, ext: String) -> ImageTexture:
-	var result: ImageTexture = self.get_cached(url)
+func get_or_request(url: String, ext: String) -> Texture2D:
+	var result: Texture2D = self.get_cached(url)
 
 	if result:
 		return result
@@ -27,9 +28,19 @@ func get_or_request(url: String, ext: String) -> ImageTexture:
 
 		if FileAccess.file_exists(cached_path):
 			_cache[url] = null
-			var image: Image = Image.load_from_file(cached_path)
-			if image:
-				var texture: ImageTexture = ImageTexture.create_from_image(image)
+			
+			var texture: Texture2D
+			
+			if ext == "gif":
+				texture = GifManager.animated_texture_from_file(cached_path)
+			else:
+				var image: Image = Image.load_from_file(cached_path)
+				
+				if image:
+					texture = PortableCompressedTexture2D.new()
+					texture.create_from_image(image, PortableCompressedTexture2D.COMPRESSION_MODE_ASTC)
+			
+			if texture:
 				_cache[url] = texture
 				return texture
 		
@@ -55,7 +66,7 @@ func _download_image(url: String, ext: StringName) -> void:
 		_cleanup_pending(url, null)
 		return
 	
-	var texture: ImageTexture = null
+	var texture: Texture2D = DEFAULT_IMAGE
 
 	if resp is HTTP.ResponseSuccess:
 		var success: HTTP.ResponseSuccess = resp
@@ -63,14 +74,19 @@ func _download_image(url: String, ext: StringName) -> void:
 		var cache_path: String = _get_cached_path(url, ext)
 		self._save_to_disk_cache(url, ext, success.body)
 
-		var image: Image = Image.new()
-		var error: Error = image.load(cache_path)
-
-		if error == OK:
-			texture = ImageTexture.create_from_image(image)
-			_cache[url] = texture
+		if ext == "gif":
+			texture = GifManager.animated_texture_from_file(cache_path)
 		else:
-			push_error("Failed to parse image from: ", url)
+			var image: Image = Image.new()
+			var error: Error = image.load(cache_path)
+			
+			if error == OK:
+				texture = PortableCompressedTexture2D.new()
+				texture.create_from_image(image, PortableCompressedTexture2D.COMPRESSION_MODE_ASTC)
+			else:
+				push_error("Failed to parse image from: ", url)
+	
+	_cache[url] = texture
 
 	# Notify all callbacks
 	_cleanup_pending(url, texture)
