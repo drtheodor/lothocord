@@ -11,6 +11,16 @@ var tokens: Array[Token]
 
 var referenced: Message
 
+# FIXME: this is bad
+func content() -> String:
+	var result: String = ""
+	for token: Token in self.tokens:
+		if token is TextToken:
+			result += token.text
+		elif token is LinkToken:
+			result += token.url
+	return result
+
 static func system_message(text: String) -> Message:
 	var message: Message = Message.new()
 	message.author_name = "GDiscord"

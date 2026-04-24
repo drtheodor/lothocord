@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://c2cfg4anvcnhw" path="res://channel.gd" id="1_vksbt"]
 [ext_resource type="PackedScene" uid="uid://bfuyrfqt5fqh2" path="res://message_context.tscn" id="3_cpih4"]
+[ext_resource type="Script" uid="uid://b8xcdcfrc0fhi" path="res://message_list.gd" id="3_oecnv"]
 [ext_resource type="Texture2D" uid="uid://bp5hu330k3ero" path="res://icon.svg" id="3_uw2bi"]
 [ext_resource type="Script" uid="uid://ugldxgqntsru" path="res://idler.gd" id="4_p6rag"]
 
@@ -159,15 +160,13 @@ layout_mode = 2
 size_flags_vertical = 3
 horizontal_scroll_mode = 0
 
-[node name="MessageList" type="VBoxContainer" parent="HBoxContainer/Main/ScrollContainer" unique_id=330579357]
+[node name="MessageList" type="Control" parent="HBoxContainer/Main/ScrollContainer" unique_id=1994224512]
 unique_name_in_owner = true
+custom_minimum_size = Vector2(0, 100)
 layout_mode = 2
 size_flags_horizontal = 3
-theme_type_variation = &"MessageContainer"
-metadata/_edit_use_anchors_ = true
-
-[node name="Message" parent="HBoxContainer/Main/ScrollContainer/MessageList" unique_id=2052089132 instance_placeholder="res://message.tscn"]
-layout_mode = 2
+size_flags_vertical = 3
+script = ExtResource("3_oecnv")
 
 [node name="VBoxContainer" type="VBoxContainer" parent="HBoxContainer/Main" unique_id=1145187782]
 layout_mode = 2

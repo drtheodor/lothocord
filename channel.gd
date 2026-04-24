@@ -1,6 +1,6 @@
 extends Control
 
-@onready var message_list: Node = %MessageList
+@onready var message_list: MessageList = %MessageList
 @onready var channel_list: VBoxContainer = %ChannelList
 @onready var message_input: CodeEdit = %NewMessageInput
 @onready var guild_list: Container = %GuildList
@@ -57,6 +57,9 @@ func _ready() -> void:
 	_typing_timer.timeout.connect(self._update_typing)
 	
 	self.add_child(self._typing_timer)
+	
+	message_list.add_message(Message.system_message("Lorem ipsum dolor sit amet, consectetur adipiscing elit. Suspendisse scelerisque justo elementum magna posuere, eu laoreet mi dictum. Curabitur in lacinia nulla. Aliquam ac ipsum neque. Cras aliquet posuere condimentum. Vestibulum tempor ut nisi sit amet porta. Vivamus a ipsum posuere, luctus ex ac, volutpat eros. Quisque interdum leo non mi scelerisque maximus. Curabitur pharetra, urna vitae auctor ultricies, mauris purus accumsan arcu, dapibus mollis lacus nisl vitae dui. Duis sagittis id leo pulvinar lacinia. In quis purus nec ipsum sagittis finibus. Nunc at volutpat mauris, eu tempor nisi. Integer id purus nulla. Aenean ut elit et elit vestibulum egestas a ac lacus. Donec mi erat, interdum vel blandit et, tincidunt facilisis nunc."))
+	message_list.add_message(Message.system_message("Morbi sollicitudin, tellus ut ultricies convallis, enim velit auctor orci, eget venenatis neque lorem id purus. Phasellus congue eleifend dolor at porta. Sed tincidunt augue vel sem tempus vulputate. Donec lacinia nulla bibendum sapien cursus interdum. Donec non ligula vel arcu rhoncus consequat. Nam maximus pharetra lectus, sit amet auctor augue. Sed tortor mauris, sodales sed fringilla in, tempus vitae dui. Donec lobortis arcu nec diam cursus sollicitudin. Proin ac tortor et dolor vestibulum consequat ut non arcu. Integer dictum sapien id sem lacinia volutpat."))
 
 func _init_guild_channels(channels: Array[Channel.GuildChannel]) -> void:
 	for child: Node in channel_list.get_children():
@@ -97,15 +100,12 @@ func _fetch_messages() -> void:
 	var messages: Array[Message] = await Discord.fetch_messages(Discord.channel)
 	messages.reverse()
 	
-	# Clear existing messages
-	for child: Node in message_list.get_children():
-		child.queue_free()
+	message_list.clear_messages()
 
 	self.last_message = null
 
-	# Add messages in chronological order (oldest first at top, newest at bottom)
 	for message: Message in messages:
-		self._on_message(message, false)
+		message_list.add_message(message)
 
 	self.scroll_to_bottom()
 	self._busy = false
