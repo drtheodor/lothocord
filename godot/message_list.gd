@@ -1,6 +1,8 @@
 extends Control
 class_name MessageList
 
+signal load_more_requested(direction: int, reference_message: Message)  # 1 for older (up), -1 for newer (down)
+
 @export var avatar_size: float = 48
 @export var avatar_margin: float = 8
 @export var name_time_spacing: float = 8
@@ -10,6 +12,8 @@ class_name MessageList
 @export var time_text_size: int = 12
 
 @export var avatar_material: ShaderMaterial = ShaderMaterial.new()
+
+@export var load_threshold: float = 100.0  # pixels from edge to trigger loading
 
 @export_category("Colors")
 @export var NAME_COLOR: Color = Color.WHITE
@@ -28,6 +32,7 @@ var _messages: Array[Message] = []
 var _scroll_offset: float = 0.0:
 	set(val):
 		_scroll_offset = clamp(val, 0.0, max(0.0, self._total_content_height - self.size.y))
+		_check_load_threshold()
 
 var _total_content_height: float = 0.0
 
@@ -52,7 +57,6 @@ func _init() -> void:
 
 func _ready() -> void:
 	set_process_input(true)
-	
 	self.mouse_entered.connect(_mouse_entered)
 	self.mouse_exited.connect(_mouse_exited)
 
@@ -146,6 +150,24 @@ func _mouse_entered() -> void:
 
 func _mouse_exited() -> void:
 	_scrollable = false
+
+func _check_load_threshold() -> void:
+	if _messages.is_empty():
+		return
+	
+	var max_scroll = max(0.0, _total_content_height - size.y)
+	
+	if max_scroll == 0:
+		return
+	
+	if _scroll_offset <= load_threshold:
+		load_more_requested.emit(-1, _messages[-1])
+	elif _scroll_offset >= max_scroll - load_threshold:
+		load_more_requested.emit(1, _messages[0])
+
+func _clamp_scroll() -> void:
+	var max_scroll = max(0.0, _total_content_height - size.y)
+	_scroll_offset = clamp(_scroll_offset, 0.0, max_scroll)
 
 func _update_total_height() -> void:
 	var total: float = 0.0
@@ -293,7 +315,7 @@ func _draw() -> void:
 		if not grouped:
 			text_y += self.name_time_spacing
 		else:
-			text_y -= self.normal_text_size # for some reason, TextParagraph.draw uses top-left corner while draw_string uses bottom-left.
+			text_y -= self.normal_text_size
 		var paragraph: TextParagraph = _layout_cache[i]
 		
 		# Selection rendering

@@ -260,6 +260,22 @@ func fetch_messages(channel_id: String) -> Array[Message]:
 	
 	return result
 
+func fetch_messages_before(channel_id: String, before: String) -> Array[Message]:
+	var url: String = "%s/channels/%s/messages?before=%s&limit=20" % [BASE_URL, channel_id, before]
+	var data: Variant = await Discord.http.request_json_or_null(url, ["Authorization: " + Discord.token])
+	
+	if not data or data is not Array:
+		return [Message.system_message("Failed to load messages")]
+	
+	var messages: Array = data
+	var result: Array[Message] = []
+	
+	for raw_message: Variant in messages:
+		var message_dict: Dictionary = raw_message
+		result.append(Message.from_json(message_dict))
+	
+	return result
+
 func get_channel(channel_id: String) -> Channel:
 	var res: Channel = self.channel_cache.get(channel_id)
 	
