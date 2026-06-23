@@ -11,7 +11,8 @@ var loading = false
 func _on_discord_ready() -> void:
 	print("ready!")
 	
-	Discord.channel = "1267481310583066735"
+	Discord.channel = "1092738162931027989" # VSI
+	#Discord.channel = "1267481310583066735" # GC
 	
 	var messages = await Discord.fetch_messages(Discord.channel)
 	messages.reverse()

@@ -192,8 +192,8 @@ func _compute_item_height(msg_idx: int) -> float:
 	var content_height: float = right_column_height
 	
 	if not _is_grouped(msg_idx):
-		content_height = max(self.avatar_size, right_column_height + name_height) + 2 * self.item_padding
-	elif _is_last_grouped(msg_idx):
+		content_height = max(self.avatar_size, right_column_height + name_height)
+	if _is_last_grouped(msg_idx):
 		content_height += 2 * self.item_padding
 	
 	return content_height
