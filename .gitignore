@@ -1,0 +1,50 @@
+# Godot 4+ specific ignores
+.godot/
+/android/
+.env
+.direnv
+
+.sconsign*.dblite
+
+# Ignore custom.py
+custom.py
+
+# Ignore generated compile_commands.json
+compile_commands.json
+
+# Ignore files generated for documentation
+/addons/zlibext/src/gen
+
+# Binaries
+/addons/zlibext/bin
+*.o
+*.os
+*.obj
+*.bc
+*.pyc
+*.dblite
+*.pdb
+*.config
+*.creator
+*.creator.user
+*.files
+*.includes
+*.idb
+*.exp
+
+# Other stuff
+*.log
+
+# VSCode
+.vscode/*
+!.vscode/extensions.json
+.DS_Store
+
+# Jetbrains
+.idea/
+
+# Cmake
+cmake-build*
+CMakeUserPresets.json
+
+.zlibext/bin

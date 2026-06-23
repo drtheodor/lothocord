@@ -1,0 +1,33 @@
+[gd_scene format=3 uid="uid://blj64vx1qn3d3"]
+
+[ext_resource type="Script" uid="uid://v2w3sp0gt4gx" path="res://main.gd" id="1_0xm2m"]
+[ext_resource type="Script" uid="uid://bhs7ls444m8nu" path="res://message_list.gd" id="1_ig7tw"]
+[ext_resource type="Shader" uid="uid://ccqdfxr2u3rtr" path="res://round.gdshader" id="3_1bvp3"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_h2yge"]
+bg_color = Color(0.06666667, 0.06666667, 0.06666667, 1)
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_h2yge"]
+shader = ExtResource("3_1bvp3")
+shader_parameter/radius = 0.5
+shader_parameter/feather = 0.010000000475
+shader_parameter/center = Vector2(0.5, 0.5)
+
+[node name="MainScreen" type="PanelContainer" unique_id=991925400]
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+theme_override_styles/panel = SubResource("StyleBoxFlat_h2yge")
+script = ExtResource("1_0xm2m")
+
+[node name="MessageList" type="Control" parent="." unique_id=459063458]
+unique_name_in_owner = true
+layout_mode = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+script = ExtResource("1_ig7tw")
+normal_text_size = 18
+time_text_size = 14
+avatar_material = SubResource("ShaderMaterial_h2yge")

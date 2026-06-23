@@ -1,0 +1,13 @@
+[configuration]
+entry_symbol = "zlibext_init"
+compatibility_minimum = "4.6"
+reloadable = false
+
+[libraries]
+#./bin/libzlibext.linux.template_debug.x86_64.so
+#windows.debug.x86_64 = "./bin/windows/libzlib_decompressor.windows.template_debug.x86_64.dll"
+#windows.release.x86_64 = "./bin/windows/libzlib_decompressor.windows.template_release.x86_64.dll"
+linux.debug.x86_64 = "./linux/libzlibext.linux.template_debug.x86_64.so"
+linux.release.x86_64 = "./linux/libzlibext.linux.template_release.x86_64.so"
+#macos.debug = "./bin/macos/libzlib_decompressor.macos.template_debug.framework"
+#macos.release = "./bin/macos/libzlib_decompressor.macos.template_release.framework"

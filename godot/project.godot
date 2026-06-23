@@ -1,0 +1,64 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[application]
+
+config/name="lothocord"
+run/main_scene="uid://blj64vx1qn3d3"
+run/print_header=false
+config/features=PackedStringArray("4.6", "GL Compatibility")
+run/low_processor_mode=true
+run/load_shell_environment=true
+boot_splash/show_image=false
+config/icon="res://icon.svg"
+
+[autoload]
+
+Discord="*uid://cirgmpjts1akr"
+Dotenv="uid://lti28sh0iqds"
+Idler="uid://bdptifi72arm2"
+
+[display]
+
+window/energy_saving/keep_screen_on=false
+window/handheld/orientation=1
+window/ios/allow_high_refresh_rate=false
+window/ios/hide_home_indicator=false
+window/ios/hide_status_bar=false
+window/ios/suppress_ui_gesture=false
+
+[memory]
+
+limits/message_queue/max_size_mb=1
+
+[navigation]
+
+world/map_use_async_iterations=false
+world/region_use_async_iterations=false
+avoidance/thread_model/avoidance_use_multiple_threads=false
+avoidance/thread_model/avoidance_use_high_priority_threads=false
+pathfinding/max_threads=0
+baking/use_crash_prevention_checks=false
+baking/thread_model/baking_use_multiple_threads=false
+baking/thread_model/baking_use_high_priority_threads=false
+2d/navigation_engine="Dummy"
+3d/navigation_engine="Dummy"
+
+[physics]
+
+common/physics_ticks_per_second=1
+2d/physics_engine="Dummy"
+3d/physics_engine="Dummy"
+
+[rendering]
+
+rendering_device/driver.windows="d3d12"
+renderer/rendering_method="gl_compatibility"
+renderer/rendering_method.mobile="gl_compatibility"

@@ -1,0 +1,411 @@
+extends Control
+class_name MessageList
+
+@export var avatar_size: float = 48
+@export var avatar_margin: float = 8
+@export var name_time_spacing: float = 8
+@export var item_padding: float = 8
+
+@export var normal_text_size: int = 14
+@export var time_text_size: int = 12
+
+@export var avatar_material: ShaderMaterial = ShaderMaterial.new()
+
+@export_category("Colors")
+@export var NAME_COLOR: Color = Color.WHITE
+@export var TIME_COLOR: Color = Color.GRAY
+@export var TEXT_COLOR: Color = Color(0.9, 0.9, 0.9)
+@export var SELECTION_COLOR: Color = Color(0.3, 0.5, 0.8, 0.5)
+@export var AVATAR_BG_COLOR: Color = Color(0.2, 0.2, 0.3)
+@export var AVATAR_TEXT_COLOR: Color = Color.WHITE
+
+var _name_font: Font = ThemeDB.fallback_font
+var _time_font: Font = ThemeDB.fallback_font
+var _text_font: Font = ThemeDB.fallback_font
+
+var _messages: Array[Message] = []
+
+var _scroll_offset: float = 0.0:
+	set(val):
+		_scroll_offset = clamp(val, 0.0, max(0.0, self._total_content_height - self.size.y))
+
+var _total_content_height: float = 0.0
+
+var _selected_message: int = -1
+var _selection_start: int = -1
+var _selection_end: int = -1
+var _drag_message: int = -1
+
+var _scrollable: bool = false
+
+# mmm cache
+var _layout_cache: Dictionary[int, TextParagraph] = {}
+var _item_heights: Array[float] = []
+
+var _author_textures: Dictionary[String, Texture2D] = {}
+var _message_rids: Dictionary[int, RID] = {}
+var _loading_authors: Dictionary[String, bool] = {}
+
+func _init() -> void:
+	self.focus_mode = Control.FOCUS_ALL
+	self.mouse_default_cursor_shape = Control.CURSOR_IBEAM
+
+func _ready() -> void:
+	set_process_input(true)
+	
+	self.mouse_entered.connect(_mouse_entered)
+	self.mouse_exited.connect(_mouse_exited)
+
+func clear_messages() -> void:
+	_messages.clear()
+	_selected_message = -1
+	_selection_start = -1
+	_selection_end = -1
+	_drag_message = -1
+	
+	_layout_cache.clear()
+	_item_heights.clear()
+	
+	for rid in _message_rids.values():
+		RenderingServer.free_rid(rid)
+	
+	_message_rids.clear()
+	_author_textures.clear()
+	_loading_authors.clear()
+	_scroll_offset = 0.0
+	_total_content_height = 0.0
+	
+	queue_redraw()
+
+func add_message(msg: Message) -> void:
+	_messages.append(msg)
+	var idx: int = _messages.size() - 1
+	_layout_cache.erase(idx)
+	_load_avatar(msg, idx)
+	_update_total_height()
+	queue_redraw()
+
+func _load_avatar(msg: Message, msg_idx: int) -> void:
+	var author_id: String = msg.author_id
+	if _author_textures.has(author_id):
+		_create_message_rid(msg_idx, _author_textures[author_id])
+		return
+	if _loading_authors.get(author_id, false):
+		return
+	_loading_authors[author_id] = true
+	_load_avatar_async(msg, author_id)
+
+func _load_avatar_async(msg: Message, author_id: String) -> void:
+	var texture: Texture2D = await Discord.get_avatar(author_id, msg.author_avatar, ceil(self.avatar_size))
+	
+	_loading_authors.erase(author_id)
+	if not texture:
+		return
+	
+	_author_textures[author_id] = texture
+	
+	for i: int in _messages.size():
+		if _messages[i].author_id == author_id and not _message_rids.has(i):
+			_create_message_rid(i, texture)
+	
+	queue_redraw()
+
+func _create_message_rid(msg_idx: int, texture: Texture2D) -> void:
+	var rid: RID = RenderingServer.canvas_item_create()
+	RenderingServer.canvas_item_set_parent(rid, get_canvas_item())
+	RenderingServer.canvas_item_set_material(rid, self.avatar_material)
+	
+	var rect: Rect2 = Rect2(0, 0, self.avatar_size, self.avatar_size)
+	RenderingServer.canvas_item_add_texture_rect(rid, rect, texture)
+	RenderingServer.canvas_item_set_visible(rid, false)
+	_message_rids[msg_idx] = rid
+
+func _input(event: InputEvent) -> void:
+	if _scrollable:
+		if event.is_action_released(&"ui_copy") and _selected_message != -1 and _selection_start != -1 and _selection_end != -1 and _selection_start != _selection_end:
+			var start = min(_selection_start, _selection_end)
+			var end = max(_selection_start, _selection_end)
+			DisplayServer.clipboard_set(self._messages[_selected_message].content.substr(start, end - start))
+		
+		if event is InputEventPanGesture:
+			_scroll_offset -= event.delta.y * 30
+			queue_redraw()
+			accept_event()
+		elif event is InputEventMouseButton:
+			if event.button_index == MOUSE_BUTTON_WHEEL_UP:
+				_scroll_offset += event.factor * 30
+				queue_redraw()
+				accept_event()
+			elif event.button_index == MOUSE_BUTTON_WHEEL_DOWN:
+				_scroll_offset -= event.factor * 30
+				queue_redraw()
+				accept_event()
+
+func _mouse_entered() -> void:
+	_scrollable = true
+
+func _mouse_exited() -> void:
+	_scrollable = false
+
+func _update_total_height() -> void:
+	var total: float = 0.0
+	
+	_item_heights.clear()
+	for i: int in _messages.size():
+		var h: float = _compute_item_height(i)
+		_item_heights.append(h)
+		total += h
+	_total_content_height = total
+
+func _compute_item_height(msg_idx: int) -> float:
+	if not _layout_cache.has(msg_idx):
+		var target_width: float = size.x - self.item_padding * 2 - self.avatar_size - self.avatar_margin
+		_update_layout_for_message(msg_idx, target_width)
+	
+	var paragraph: TextParagraph = _layout_cache[msg_idx]
+	var text_height: float = paragraph.get_size().y
+	var name_height: float = _name_font.get_height() if _name_font else 20.0
+	
+	var right_column_height: float = self.name_time_spacing + text_height
+	var content_height: float = right_column_height
+	
+	if not _is_grouped(msg_idx):
+		content_height = max(self.avatar_size, right_column_height + name_height) + 2 * self.item_padding
+	elif _is_last_grouped(msg_idx):
+		content_height += 2 * self.item_padding
+	
+	return content_height
+
+func _update_layout_for_message(msg_idx: int, target_width: float) -> void:
+	if msg_idx < 0 or msg_idx >= _messages.size():
+		return
+	
+	var msg: Message = _messages[msg_idx] 
+	var paragraph: TextParagraph = TextParagraph.new()
+	paragraph.orientation = TextServer.ORIENTATION_HORIZONTAL
+	paragraph.direction = TextServer.DIRECTION_AUTO
+	paragraph.width = target_width
+	paragraph.justification_flags = TextServer.JUSTIFICATION_NONE
+	paragraph.alignment = HORIZONTAL_ALIGNMENT_LEFT
+	
+	paragraph.add_string(msg.content, _text_font, self.normal_text_size)
+	_layout_cache[msg_idx] = paragraph
+
+func _update_layouts_if_needed() -> void:
+	var target_width: float = size.x - self.item_padding * 2 - self.avatar_size - self.avatar_margin
+	var needs_update: bool = false
+	for i: int in _messages.size():
+		if not _layout_cache.has(i):
+			needs_update = true
+			_update_layout_for_message(i, target_width)
+		else:
+			var para: TextParagraph = _layout_cache[i]
+			if not is_equal_approx(para.width, target_width):
+				needs_update = true
+				_update_layout_for_message(i, target_width)
+	if needs_update:
+		_update_total_height()
+
+func _is_grouped(msg_idx: int) -> bool:
+	if msg_idx <= 0:
+		return false
+	var prev = _messages[msg_idx - 1]
+	var cur = _messages[msg_idx]
+	if cur.author_id != prev.author_id:
+		return false
+	var diff = abs(cur.timestamp - prev.timestamp)
+	return diff <= 5 * 60  # 5 minutes in seconds
+
+func _is_last_grouped(msg_idx: int) -> bool:
+	if msg_idx + 1 >= len(_messages):
+		return true
+	var prev = _messages[msg_idx + 1]
+	var cur = _messages[msg_idx]
+	if cur.author_id != prev.author_id:
+		return true
+	var diff = abs(cur.timestamp - prev.timestamp)
+	return diff > 5 * 60
+
+func _draw() -> void:
+	if _messages.is_empty():
+		return
+	
+	_update_layouts_if_needed()
+	
+	var current_y: float = size.y + _scroll_offset
+	
+	for i: int in range(_messages.size() - 1, -1, -1):
+		var item_height: float = _item_heights[i] if i < _item_heights.size() else _compute_item_height(i)
+		var item_top: float = current_y - item_height
+		current_y = item_top
+		
+		# Culling
+		if item_top + item_height < 0 and item_top > size.y:
+			if _message_rids.has(i):
+				RenderingServer.canvas_item_set_visible(_message_rids[i], false)
+			continue
+		
+		var msg: Message = _messages[i]
+		var grouped: bool = _is_grouped(i)
+		
+		if not grouped:
+			var avatar_rect: Rect2 = Rect2(
+				self.item_padding, item_top + self.item_padding,
+				self.avatar_size, self.avatar_size
+			)
+			
+			if _message_rids.has(i):
+				var rid: RID = _message_rids[i]
+				RenderingServer.canvas_item_set_transform(rid, Transform2D(0, avatar_rect.position))
+				RenderingServer.canvas_item_set_visible(rid, true)
+			else:
+				var center: Vector2 = avatar_rect.get_center()
+				var radius: float = self.avatar_size / 2.0
+				draw_circle(center, radius, AVATAR_BG_COLOR)
+				var initial: String = msg.author_name.substr(0, 1).to_upper()
+				var font_size: int = int(radius * 0.8)
+				var text_size: Vector2 = _name_font.get_string_size(initial)
+				var text_pos: Vector2 = center - text_size / 2
+				draw_string(_name_font, text_pos, initial, HORIZONTAL_ALIGNMENT_LEFT, -1, font_size, AVATAR_TEXT_COLOR)
+		else:
+			if _message_rids.has(i):
+				RenderingServer.canvas_item_set_visible(_message_rids[i], false)
+		
+		# Name & Time row
+		var baseline_y: float = item_top + self.item_padding + _name_font.get_ascent()
+		var time_x: float
+		
+		if not grouped:
+			var name_str: String = msg.author_name
+			var name_time_x: float = self.item_padding + self.avatar_size + self.avatar_margin
+			draw_string(_name_font, Vector2(name_time_x, baseline_y), name_str, HORIZONTAL_ALIGNMENT_LEFT, -1, self.normal_text_size, NAME_COLOR)
+			var name_width: float = _name_font.get_string_size(name_str, HORIZONTAL_ALIGNMENT_LEFT, -1, self.normal_text_size).x
+			time_x = name_time_x + name_width + self.item_padding
+		else:
+			time_x = self.item_padding
+		
+		if not grouped or i == self._selected_message:
+			draw_string(_time_font, Vector2(time_x, baseline_y), Util.unix_to_human(msg.timestamp), HORIZONTAL_ALIGNMENT_CENTER, self.avatar_size if grouped else -1., self.time_text_size, TIME_COLOR)
+		
+		# Message text
+		var text_x: float = self.item_padding + self.avatar_size + self.avatar_margin
+		var text_y: float = baseline_y
+		if not grouped:
+			text_y += self.name_time_spacing
+		else:
+			text_y -= self.normal_text_size # for some reason, TextParagraph.draw uses top-left corner while draw_string uses bottom-left.
+		var paragraph: TextParagraph = _layout_cache[i]
+		
+		# Selection rendering
+		if i == self._selected_message and _selection_start != -1 and _selection_end != -1:
+			var start_idx: int = min(_selection_start, _selection_end)
+			var end_idx: int = max(_selection_start, _selection_end)
+			
+			var line_count: int = paragraph.get_line_count()
+			var y_offset: float = 0.0
+			for line: int in range(line_count):
+				var line_range: Vector2i = paragraph.get_line_range(line)
+				var line_start_char: int = line_range.x
+				var line_end_char: int = line_range.y
+				
+				var overlap_start: int = max(start_idx, line_start_char)
+				var overlap_end: int = min(end_idx, line_end_char)
+				if overlap_start < overlap_end:
+					var line_text: String = msg.content.substr(line_start_char, line_end_char - line_start_char)
+					var prefix: String = line_text.substr(0, overlap_start - line_start_char)
+					var selected: String = line_text.substr(overlap_start - line_start_char, overlap_end - overlap_start)
+					
+					var prefix_width: float = _text_font.get_string_size(prefix, HORIZONTAL_ALIGNMENT_LEFT, -1, self.normal_text_size).x
+					var selected_width: float = _text_font.get_string_size(selected, HORIZONTAL_ALIGNMENT_LEFT, -1, self.normal_text_size).x
+					
+					var line_height: float = paragraph.get_line_ascent(line) + paragraph.get_line_descent(line)
+					var line_rect: Rect2 = Rect2(
+						prefix_width, y_offset,
+						selected_width, line_height
+					)
+					draw_rect(Rect2(text_x + line_rect.position.x, text_y + line_rect.position.y, line_rect.size.x, line_rect.size.y), SELECTION_COLOR, true)
+				
+				y_offset += paragraph.get_line_ascent(line) + paragraph.get_line_descent(line)
+		
+		paragraph.draw(get_canvas_item(), Vector2(text_x, text_y))
+
+func _gui_input(event: InputEvent) -> void:
+	if event is InputEventMouseButton:
+		var mb: InputEventMouseButton = event
+		if mb.button_index == MOUSE_BUTTON_LEFT:
+			if mb.pressed:
+				_drag_message = -1  # reset drag
+				var mouse_pos: Vector2 = mb.position
+				var msg_idx: int = _find_message_at_y(mouse_pos.y)
+				if msg_idx >= 0:
+					_drag_message = msg_idx
+					self._selected_message = msg_idx
+					var char_idx: int = _get_character_index_at_pos(msg_idx, mouse_pos)
+					if char_idx >= 0:
+						self._selection_start = char_idx
+						self._selection_end = char_idx
+					else:
+						self._selection_start = -1
+						self._selection_end = -1
+					queue_redraw()
+				else:
+					self._selected_message = -1
+					self._selection_start = -1
+					self._selection_end = -1
+					queue_redraw()
+			else:
+				_drag_message = -1
+	
+	elif event is InputEventMouseMotion and _drag_message != -1:
+		var mm: InputEventMouseMotion = event
+		if _drag_message >= 0 and _drag_message < _messages.size():
+			var char_idx: int = _get_character_index_at_pos(_drag_message, mm.position)
+			if char_idx >= 0 and self._selection_start != -1:
+				self._selection_end = char_idx
+				queue_redraw()
+
+func _find_message_at_y(y_global: float) -> int:
+	var current_y: float = size.y + _scroll_offset
+	for i: int in range(_messages.size() - 1, -1, -1):
+		var h: float = _item_heights[i] if i < _item_heights.size() else _compute_item_height(i)
+		var item_top: float = current_y - h
+		if y_global >= item_top and y_global < item_top + h:
+			return i
+		current_y = item_top
+	return -1
+
+func _get_character_index_at_pos(msg_idx: int, mouse_pos: Vector2) -> int:
+	if msg_idx < 0 or msg_idx >= _messages.size():
+		return -1
+	var paragraph: TextParagraph = _layout_cache.get(msg_idx)
+	if not paragraph:
+		return -1
+	
+	var item_y: float = _get_item_y(msg_idx)
+	var grouped: bool = _is_grouped(msg_idx)
+	var baseline_y: float = item_y + self.item_padding + _name_font.get_ascent()
+	var text_y: float = baseline_y
+	if not grouped:
+		text_y += self.name_time_spacing
+	else:
+		text_y -= self.normal_text_size
+	var text_x: float = self.item_padding + self.avatar_size + self.avatar_margin
+	
+	var local_pos: Vector2 = mouse_pos - Vector2(text_x, text_y)
+	if local_pos.y < 0 or local_pos.y > paragraph.get_size().y:
+		return -1
+	
+	var idx: int = paragraph.hit_test(local_pos)
+	return idx if idx >= 0 else -1
+
+func _get_item_y(msg_idx: int) -> float:
+	var y: float = size.y + _scroll_offset
+	for i: int in range(_messages.size() - 1, msg_idx, -1):
+		y -= _item_heights[i] if i < _item_heights.size() else _compute_item_height(i)
+	return y - (_item_heights[msg_idx] if msg_idx < _item_heights.size() else _compute_item_height(msg_idx))
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_RESIZED:
+		_layout_cache.clear()
+		_update_layouts_if_needed()
+		queue_redraw()
