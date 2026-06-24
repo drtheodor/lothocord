@@ -36,10 +36,12 @@ var _scroll_offset: float = 0.0:
 
 var _total_content_height: float = 0.0
 
-var _selected_message: int = -1
-var _selection_start: int = -1
-var _selection_end: int = -1
-var _drag_message: int = -1
+# Selection: Vector2i(message_index, character_index)
+var _sel_start: Vector2i = Vector2i(-1, -1)
+var _sel_end: Vector2i = Vector2i(-1, -1)
+
+var _drag_message: int = -1  # message index being dragged
+var _hover_message: int = -1  # message under mouse (for time display in grouped messages)
 
 var _scrollable: bool = false
 
@@ -62,10 +64,10 @@ func _ready() -> void:
 
 func clear_messages() -> void:
 	_messages.clear()
-	_selected_message = -1
-	_selection_start = -1
-	_selection_end = -1
+	_sel_start = Vector2i(-1, -1)
+	_sel_end = Vector2i(-1, -1)
 	_drag_message = -1
+	_hover_message = -1
 	
 	_layout_cache.clear()
 	_item_heights.clear()
@@ -126,10 +128,26 @@ func _create_message_rid(msg_idx: int, texture: Texture2D) -> void:
 
 func _input(event: InputEvent) -> void:
 	if _scrollable:
-		if event.is_action_released(&"ui_copy") and _selected_message != -1 and _selection_start != -1 and _selection_end != -1 and _selection_start != _selection_end:
-			var start = min(_selection_start, _selection_end)
-			var end = max(_selection_start, _selection_end)
-			DisplayServer.clipboard_set(self._messages[_selected_message].content.substr(start, end - start))
+		if event.is_action_released(&"ui_copy") and _sel_start.x != -1 and _sel_start.y != -1 and _sel_end.x != -1 and _sel_end.y != -1:
+			var start = _sel_start
+			var end = _sel_end
+			# Normalize order (start <= end)
+			if start.x > end.x or (start.x == end.x and start.y > end.y):
+				var temp = start
+				start = end
+				end = temp
+			var texts: Array[String] = []
+			if start.x == end.x:
+				texts.append(_messages[start.x].content.substr(start.y, end.y - start.y))
+			else:
+				# First message: from start.y to end
+				texts.append(_messages[start.x].content.substr(start.y))
+				# Middle messages: full content
+				for i in range(start.x + 1, end.x):
+					texts.append(_messages[i].content)
+				# Last message: from 0 to end.y
+				texts.append(_messages[end.x].content.substr(0, end.y))
+			DisplayServer.clipboard_set("\n".join(texts))
 		
 		if event is InputEventPanGesture:
 			_scroll_offset -= event.delta.y * 30
@@ -150,6 +168,8 @@ func _mouse_entered() -> void:
 
 func _mouse_exited() -> void:
 	_scrollable = false
+	_hover_message = -1
+	queue_redraw()  # redraw to hide time on grouped messages
 
 func _check_load_threshold() -> void:
 	if _messages.is_empty():
@@ -306,7 +326,8 @@ func _draw() -> void:
 		else:
 			time_x = self.item_padding
 		
-		if not grouped or i == self._selected_message:
+		# Draw time if not grouped, or if grouped and this message is hovered
+		if not grouped or i == _hover_message:
 			draw_string(_time_font, Vector2(time_x, baseline_y), Util.unix_to_human(msg.timestamp), HORIZONTAL_ALIGNMENT_CENTER, self.avatar_size if grouped else -1., self.time_text_size, TIME_COLOR)
 		
 		# Message text
@@ -318,36 +339,56 @@ func _draw() -> void:
 			text_y -= self.normal_text_size
 		var paragraph: TextParagraph = _layout_cache[i]
 		
-		# Selection rendering
-		if i == self._selected_message and _selection_start != -1 and _selection_end != -1:
-			var start_idx: int = min(_selection_start, _selection_end)
-			var end_idx: int = max(_selection_start, _selection_end)
-			
-			var line_count: int = paragraph.get_line_count()
-			var y_offset: float = 0.0
-			for line: int in range(line_count):
-				var line_range: Vector2i = paragraph.get_line_range(line)
-				var line_start_char: int = line_range.x
-				var line_end_char: int = line_range.y
-				
-				var overlap_start: int = max(start_idx, line_start_char)
-				var overlap_end: int = min(end_idx, line_end_char)
-				if overlap_start < overlap_end:
-					var line_text: String = msg.content.substr(line_start_char, line_end_char - line_start_char)
-					var prefix: String = line_text.substr(0, overlap_start - line_start_char)
-					var selected: String = line_text.substr(overlap_start - line_start_char, overlap_end - overlap_start)
-					
-					var prefix_width: float = _text_font.get_string_size(prefix, HORIZONTAL_ALIGNMENT_LEFT, -1, self.normal_text_size).x
-					var selected_width: float = _text_font.get_string_size(selected, HORIZONTAL_ALIGNMENT_LEFT, -1, self.normal_text_size).x
-					
-					var line_height: float = paragraph.get_line_ascent(line) + paragraph.get_line_descent(line)
-					var line_rect: Rect2 = Rect2(
-						prefix_width, y_offset,
-						selected_width, line_height
-					)
-					draw_rect(Rect2(text_x + line_rect.position.x, text_y + line_rect.position.y, line_rect.size.x, line_rect.size.y), SELECTION_COLOR, true)
-				
-				y_offset += paragraph.get_line_ascent(line) + paragraph.get_line_descent(line)
+		# Selection rendering (multi‑message)
+		if _sel_start.x != -1 and _sel_end.x != -1:
+			var start = _sel_start
+			var end = _sel_end
+			if start.x > end.x or (start.x == end.x and start.y > end.y):
+				var temp = start
+				start = end
+				end = temp
+			var in_sel: bool = i >= start.x and i <= end.x
+			if in_sel:
+				var char_start: int = 0
+				var char_end: int = len(msg.content)
+				if start.x == end.x:
+					char_start = start.y
+					char_end = end.y
+				elif i == start.x:
+					char_start = start.y
+					char_end = len(msg.content)
+				elif i == end.x:
+					char_start = 0
+					char_end = end.y
+				else:
+					char_start = 0
+					char_end = len(msg.content)
+				if char_start != char_end and char_start >= 0 and char_end <= len(msg.content):
+					var line_count: int = paragraph.get_line_count()
+					var y_offset: float = 0.0
+					for line: int in range(line_count):
+						var line_range: Vector2i = paragraph.get_line_range(line)
+						var line_start_char: int = line_range.x
+						var line_end_char: int = line_range.y
+						
+						var overlap_start: int = max(char_start, line_start_char)
+						var overlap_end: int = min(char_end, line_end_char)
+						if overlap_start < overlap_end:
+							var line_text: String = msg.content.substr(line_start_char, line_end_char - line_start_char)
+							var prefix: String = line_text.substr(0, overlap_start - line_start_char)
+							var selected: String = line_text.substr(overlap_start - line_start_char, overlap_end - overlap_start)
+							
+							var prefix_width: float = _text_font.get_string_size(prefix, HORIZONTAL_ALIGNMENT_LEFT, -1, self.normal_text_size).x
+							var selected_width: float = _text_font.get_string_size(selected, HORIZONTAL_ALIGNMENT_LEFT, -1, self.normal_text_size).x
+							
+							var line_height: float = paragraph.get_line_ascent(line) + paragraph.get_line_descent(line)
+							var line_rect: Rect2 = Rect2(
+								prefix_width, y_offset,
+								selected_width, line_height
+							)
+							draw_rect(Rect2(text_x + line_rect.position.x, text_y + line_rect.position.y, line_rect.size.x, line_rect.size.y), SELECTION_COLOR, true)
+						
+						y_offset += paragraph.get_line_ascent(line) + paragraph.get_line_descent(line)
 		
 		paragraph.draw(get_canvas_item(), Vector2(text_x, text_y))
 
@@ -356,34 +397,46 @@ func _gui_input(event: InputEvent) -> void:
 		var mb: InputEventMouseButton = event
 		if mb.button_index == MOUSE_BUTTON_LEFT:
 			if mb.pressed:
-				_drag_message = -1  # reset drag
+				_drag_message = -1  # reset
 				var mouse_pos: Vector2 = mb.position
 				var msg_idx: int = _find_message_at_y(mouse_pos.y)
 				if msg_idx >= 0:
-					_drag_message = msg_idx
-					self._selected_message = msg_idx
 					var char_idx: int = _get_character_index_at_pos(msg_idx, mouse_pos)
 					if char_idx >= 0:
-						self._selection_start = char_idx
-						self._selection_end = char_idx
+						if mb.shift_pressed and _sel_start.x != -1:
+							# Extend selection
+							_sel_end = Vector2i(msg_idx, char_idx)
+						else:
+							# Start new selection
+							_sel_start = Vector2i(msg_idx, char_idx)
+							_sel_end = _sel_start
+						_drag_message = msg_idx
+						queue_redraw()
 					else:
-						self._selection_start = -1
-						self._selection_end = -1
-					queue_redraw()
+						# clicked in empty text area -> clear
+						_sel_start = Vector2i(-1, -1)
+						_sel_end = Vector2i(-1, -1)
+						queue_redraw()
 				else:
-					self._selected_message = -1
-					self._selection_start = -1
-					self._selection_end = -1
+					# click outside messages -> clear
+					_sel_start = Vector2i(-1, -1)
+					_sel_end = Vector2i(-1, -1)
 					queue_redraw()
 			else:
 				_drag_message = -1
 	
-	elif event is InputEventMouseMotion and _drag_message != -1:
-		var mm: InputEventMouseMotion = event
-		if _drag_message >= 0 and _drag_message < _messages.size():
-			var char_idx: int = _get_character_index_at_pos(_drag_message, mm.position)
-			if char_idx >= 0 and self._selection_start != -1:
-				self._selection_end = char_idx
+	elif event is InputEventMouseMotion:
+		# Update hover message (for time display on grouped messages)
+		var new_hover = _find_message_at_y(event.position.y)
+		if new_hover != _hover_message:
+			_hover_message = new_hover
+			queue_redraw()
+		
+		# Handle drag selection
+		if _drag_message != -1:
+			var char_idx: int = _get_character_index_at_pos(_drag_message, event.position)
+			if char_idx >= 0 and _sel_start.x != -1:
+				_sel_end = Vector2i(_drag_message, char_idx)
 				queue_redraw()
 
 func _find_message_at_y(y_global: float) -> int:
