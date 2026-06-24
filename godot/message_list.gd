@@ -434,10 +434,13 @@ func _gui_input(event: InputEvent) -> void:
 		
 		# Handle drag selection
 		if _drag_message != -1:
-			var char_idx: int = _get_character_index_at_pos(_drag_message, event.position)
-			if char_idx >= 0 and _sel_start.x != -1:
-				_sel_end = Vector2i(_drag_message, char_idx)
-				queue_redraw()
+			var current_msg: int = _find_message_at_y(event.position.y)
+			if current_msg >= 0:
+				_drag_message = current_msg
+				var char_idx: int = _get_character_index_at_pos(current_msg, event.position)
+				if char_idx >= 0 and _sel_start.x != -1:
+					_sel_end = Vector2i(current_msg, char_idx)
+					queue_redraw()
 
 func _find_message_at_y(y_global: float) -> int:
 	var current_y: float = size.y + _scroll_offset
