@@ -2,6 +2,7 @@ extends Control
 class_name MessageList
 
 signal load_more_requested(direction: int, reference_message: Message)  # 1 for older (up), -1 for newer (down)
+signal click_message(message: Message)
 
 @export var avatar_size: float = 48
 @export var avatar_margin: float = 8
@@ -40,7 +41,7 @@ var _total_content_height: float = 0.0
 var _sel_start: Vector2i = Vector2i(-1, -1)
 var _sel_end: Vector2i = Vector2i(-1, -1)
 
-var _drag_message: int = -1  # message index being dragged
+var _drag_message: int = -1 # message index being dragged
 var _hover_message: int = -1  # message under mouse (for time display in grouped messages)
 
 var _scrollable: bool = false
@@ -397,6 +398,7 @@ func _gui_input(event: InputEvent) -> void:
 		var mb: InputEventMouseButton = event
 		if mb.button_index == MOUSE_BUTTON_LEFT:
 			if mb.pressed:
+				var was_dragging = _drag_message != -1
 				_drag_message = -1  # reset
 				var mouse_pos: Vector2 = mb.position
 				var msg_idx: int = _find_message_at_y(mouse_pos.y)
@@ -410,6 +412,8 @@ func _gui_input(event: InputEvent) -> void:
 							# Start new selection
 							_sel_start = Vector2i(msg_idx, char_idx)
 							_sel_end = _sel_start
+						if not was_dragging:
+							click_message.emit(_messages[msg_idx])
 						_drag_message = msg_idx
 						queue_redraw()
 					else:

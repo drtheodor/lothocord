@@ -23,7 +23,7 @@ var content: String:
 
 static func system_message(text: String) -> Message:
 	var message: Message = Message.new()
-	message.author_name = "GDiscord"
+	message.author_name = "lothocord"
 	message.author_id = "643945264868098049"
 	message.author_avatar = "c6a249645d46209f337279cd2ca998c7"
 	message.timestamp = int(Time.get_unix_time_from_system())

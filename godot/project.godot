@@ -45,7 +45,7 @@ ui_accept={
 
 [memory]
 
-limits/message_queue/max_size_mb=1
+limits/message_queue/max_size_mb=2
 
 [navigation]
 

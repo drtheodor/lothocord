@@ -16,6 +16,8 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
 script = ExtResource("1_0xm2m")
 
 [node name="MessageList" type="Control" parent="." unique_id=459063458]
@@ -27,6 +29,12 @@ script = ExtResource("1_ig7tw")
 normal_text_size = 18
 time_text_size = 14
 avatar_material = SubResource("ShaderMaterial_h2yge")
+
+[node name="StatusLabel" type="Label" parent="." unique_id=945884644]
+layout_mode = 2
+clip_text = true
+text_overrun_behavior = 3
+max_lines_visible = 1
 
 [node name="TextEdit" type="TextEdit" parent="." unique_id=850878516]
 custom_minimum_size = Vector2(0, 16)
