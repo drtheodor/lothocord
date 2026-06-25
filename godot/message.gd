@@ -1,11 +1,11 @@
 class_name Message
 
 var author_name: String
-var author_id: String
-var author_avatar: String
-var nonce: String
+var author_id: StringName
+var author_avatar: StringName
+#var nonce: String
 
-var message_id: String
+var message_id: StringName
 var timestamp: int
 var tokens: Array[Token]
 
@@ -24,9 +24,9 @@ var content: String:
 static func system_message(text: String) -> Message:
 	var message: Message = Message.new()
 	message.author_name = "lothocord"
-	message.author_id = "643945264868098049"
-	message.author_avatar = "c6a249645d46209f337279cd2ca998c7"
-	message.timestamp = int(Time.get_unix_time_from_system())
+	message.author_id = &"643945264868098049"
+	message.author_avatar = &"c6a249645d46209f337279cd2ca998c7"
+	message.timestamp = Util.get_time_millis()
 	message.tokens = [Message.TextToken.new(text)]
 	
 	return message
@@ -38,8 +38,8 @@ static func with_user(user: User) -> Message:
 	message.author_avatar = user.avatar_id
 	return message
 
-static func from_json(data: Dictionary, short: bool = false) -> Message:
-	var _message_id: String = data["id"]
+static func from_json(data: Dictionary) -> Message:
+	var _message_id: StringName = data["id"]
 	var author: Dictionary = data["author"]
 	#var mentions = message_data["mentions"]
 	#var mention_roles = message_data["mention_roles"]
@@ -48,23 +48,17 @@ static func from_json(data: Dictionary, short: bool = false) -> Message:
 	var iso_timestamp: String = data["timestamp"]
 	#var edited_timestamp: int = message_data["edited_timestamp"]
 	
-	var _author_id: String = author["id"]
+	var _author_id: StringName = author["id"]
 	var _author_name: String = author["display_name"] if author.get("display_name") else author["global_name"] if author["global_name"] else author["username"] # I don't know why this fixes it but it doesl
-	var _author_avatar: Variant = author.get("avatar")
-	_author_avatar = _author_avatar if _author_avatar else ""
+	var _author_avatar: StringName = author.get("avatar")
 	
-	var referenced_message: Dictionary = data.get("referenced_message", {})
-	var _referenced: Message = Message.from_json(referenced_message, true) if referenced_message else null
+	var maybe_reference_message: Variant = data.get("referenced_message")
+	var _referenced: Message = Message.from_json(maybe_reference_message) if maybe_reference_message else null
 
 	var _timestamp: int = Time.get_unix_time_from_datetime_string(iso_timestamp)
-	var _nonce: String = data.get("nonce", "")
+	#var _nonce: String = data.get("nonce", "")
 	
 	var _content: String = data["content"]
-	
-	if short:
-		_content = _content.replace("\n", "")
-		if _content.length() > 120:
-			_content = _content.substr(0, 120) + "…"
 	
 	var _tokens: Array[Token] = Token.parse(_content)
 	
@@ -95,7 +89,7 @@ static func from_json(data: Dictionary, short: bool = false) -> Message:
 	
 	message.message_id = _message_id
 	message.timestamp = _timestamp
-	message.nonce = _nonce
+	#message.nonce = _nonce
 	message.tokens = _tokens
 	
 	if _referenced:

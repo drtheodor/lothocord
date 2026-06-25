@@ -228,6 +228,14 @@ func _on_gateway_message(socket: WebSocketPeer, some_json: Variant) -> void:
 				if OS.is_debug_build():
 					print("Unhandled event ", json["t"])
 
+func floor_cdn_size(size: int) -> int:
+	if size % 16 == 0: return size
+	return floor(size / 16.) * 16
+
+func ceil_cdn_size(size: int) -> int:
+	if size % 16 == 0: return size
+	return ceil(size / 16.) * 16
+
 func get_avatar_url(user_id: String, avatar_id: String, size: int = 64) -> String:
 	# TODO: automatically change size to be 16, 32, 48, 64, 80, ..., 128, 
 	return "%s/avatars/%s/%s.webp?size=%s" % [CDN_URL, user_id, avatar_id, size]

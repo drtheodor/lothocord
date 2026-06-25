@@ -2,6 +2,9 @@ var _http: HTTP
 var _cache: Dictionary[String, Texture2D] = {}
 var _pending: Dictionary[String, Future] = {}
 
+## TODO: make imagecache more generalized, make a DiscordImageCache which would use ImageCache and wrap the ?size={x} parameter.
+##   and wrap it to be a multiple of 16. Also pass preferred size, so it'd be something like DiscordImageCache.get_or_request("avatars/id/hash", 72) -> ImageCache.get_or_request("https://.../avatars/id/hash", 80) + Image.resize(72)
+
 # Disk cache directory
 const CACHE_DIR: String = "user://cache/"
 const DEFAULT_IMAGE: Texture2D = preload("res://icon.svg")
@@ -13,6 +16,9 @@ func _init(http: HTTP) -> void:
 	var err: Error = DirAccess.make_dir_recursive_absolute(CACHE_DIR)
 	if err != OK:
 		push_error("Failed to create cache dir: ", err)
+
+func is_pending(url: String) -> bool:
+	return _pending.has(url)
 
 func get_cached(url: String) -> Texture2D:
 	return _cache.get(url)

@@ -1,5 +1,5 @@
 extends Control
-class_name MessageList
+class_name UiMessageList
 
 signal load_more_requested(direction: int, reference_message: Message)  # 1 for older (up), -1 for newer (down)
 signal click_message(message: Message)
@@ -50,9 +50,7 @@ var _scrollable: bool = false
 var _layout_cache: Dictionary[int, TextParagraph] = {}
 var _item_heights: Array[float] = []
 
-var _author_textures: Dictionary[String, Texture2D] = {}
 var _message_rids: Dictionary[int, RID] = {}
-var _loading_authors: Dictionary[String, bool] = {}
 
 func _init() -> void:
 	self.focus_mode = Control.FOCUS_ALL
@@ -77,8 +75,6 @@ func clear_messages() -> void:
 		RenderingServer.free_rid(rid)
 	
 	_message_rids.clear()
-	_author_textures.clear()
-	_loading_authors.clear()
 	_scroll_offset = 0.0
 	_total_content_height = 0.0
 	
@@ -93,26 +89,24 @@ func add_message(msg: Message) -> void:
 	queue_redraw()
 
 func _load_avatar(msg: Message, msg_idx: int) -> void:
-	var author_id: String = msg.author_id
-	if _author_textures.has(author_id):
-		_create_message_rid(msg_idx, _author_textures[author_id])
-		return
-	if _loading_authors.get(author_id, false):
-		return
-	_loading_authors[author_id] = true
-	_load_avatar_async(msg, author_id)
-
-func _load_avatar_async(msg: Message, author_id: String) -> void:
-	var texture: Texture2D = await Discord.get_avatar(author_id, msg.author_avatar, ceil(self.avatar_size))
+	var url = Discord.get_avatar_url(msg.author_id, msg.author_avatar, Discord.ceil_cdn_size(self.avatar_size))
 	
-	_loading_authors.erase(author_id)
+	if Discord.image_cache.is_pending(url):
+		return
+	
+	var texture = Discord.image_cache.get_cached(url)
+	
+	if texture:
+		_create_message_rid(msg_idx, texture)
+		return
+	
+	texture = await Discord.image_cache.get_or_request(url, "webp")
+	
 	if not texture:
 		return
 	
-	_author_textures[author_id] = texture
-	
 	for i: int in _messages.size():
-		if _messages[i].author_id == author_id and not _message_rids.has(i):
+		if _messages[i].author_id == msg.author_id and not _message_rids.has(i):
 			_create_message_rid(i, texture)
 	
 	queue_redraw()
