@@ -65,7 +65,7 @@
           steamapi = "no";
         } // commonFlags;
 
-        templateFlags = {
+        exportFlags = {
           disable_3d = "yes";
           disable_physics_2d = "yes";
           disable_physics_3d = "yes";
@@ -88,6 +88,12 @@
               ++ lib.optional (!stdenv.hostPlatform.sse4_2Support) ./godot-no-sse4.patch
               ++ lib.optional (!stdenv.hostPlatform.sse4_2Support) ./no-sse4-check.patch;
             sconsFlags = attrs.sconsFlags ++ mkSconsFlagsFromAttrSet editorFlags;
+          }))
+          (godotPackages_4_6.export-template.overrideAttrs (attrs: {
+            patches = attrs.patches 
+              ++ lib.optional (!stdenv.hostPlatform.sse4_2Support) ./godot-no-sse4.patch
+              ++ lib.optional (!stdenv.hostPlatform.sse4_2Support) ./no-sse4-check.patch;
+            sconsFlags = attrs.sconsFlags ++ mkSconsFlagsFromAttrSet exportFlags;
           }))
 
           # zlibext

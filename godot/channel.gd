@@ -46,7 +46,7 @@ class GuildChannel extends Channel:
 
 		var _type: Type = data.get("type", 0) as Type
 
-		var _parent_id: StringName = data.get("parent_id", &"")
+		var _parent_id: StringName = data["parent_id"] if data.get("parent_id") else &""
 
 		var _position: int = data["position"]
 		return GuildChannel.new(_channel_id, _channel_name, _type, _parent_id, _position)
