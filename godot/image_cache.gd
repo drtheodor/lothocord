@@ -90,7 +90,7 @@ func _download_image(url: String, ext: StringName) -> void:
 			
 			if error == OK:
 				texture = PortableCompressedTexture2D.new()
-				texture.create_from_image(image, PortableCompressedTexture2D.COMPRESSION_MODE_ASTC)
+				texture.create_from_image(image, PortableCompressedTexture2D.COMPRESSION_MODE_LOSSY)
 			else:
 				push_error("Failed to parse image from: ", url)
 	
