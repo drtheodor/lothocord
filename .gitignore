@@ -7,7 +7,7 @@
 .sconsign*.dblite
 
 # Ignore custom.py
-custom.py
+#custom.py
 
 # Ignore generated compile_commands.json
 compile_commands.json

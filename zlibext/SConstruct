@@ -5,7 +5,7 @@ from methods import print_error
 
 
 libname = "zlibext"
-projectdir = "."
+projectdir = "../godot"
 
 localEnv = Environment(tools=["default"], PLATFORM="", ENV=os.environ.copy())
 localEnv.Append(LIBS=["z"])
@@ -64,7 +64,7 @@ library = env.SharedLibrary(
 #copy = env.Install("{}/bin/{}/".format(projectdir, env["platform"]), library)
 
 default_args = [
-    library, 
+    library,
     #copy
 ]
 Default(*default_args)
