@@ -8,7 +8,6 @@
 shader = ExtResource("3_1bvp3")
 shader_parameter/radius = 0.5
 shader_parameter/feather = 0.010000000475
-shader_parameter/center = Vector2(0.5, 0.5)
 
 [node name="MainScreen" type="VBoxContainer" unique_id=731875368]
 anchors_preset = 15
