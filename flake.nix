@@ -82,7 +82,15 @@
         ];
 
         buildInputs = with pkgs; [
-          #wayland
+          pkg-config
+          scons
+          zlib
+        ];
+      in {
+        devShells.default = pkgs.mkShell {
+          inherit nativeBuildInputs;
+
+          buildInputs = buildInputs ++ (with pkgs; [
           (godot.overrideAttrs (attrs: {
             patches = attrs.patches 
               ++ lib.optional (!stdenv.hostPlatform.sse4_2Support) ./godot-no-sse4.patch
@@ -95,16 +103,13 @@
               ++ lib.optional (!stdenv.hostPlatform.sse4_2Support) ./no-sse4-check.patch;
             sconsFlags = attrs.sconsFlags ++ mkSconsFlagsFromAttrSet exportFlags;
           }))
+          ]);
+        };
 
-          # zlibext
-          pkg-config
-          scons
-          mold
-          zlib
-        ];
-      in {
-        devShells.default = pkgs.mkShell {
-          inherit nativeBuildInputs buildInputs;
+        devShells.lite = pkgs.mkShell {
+          inherit nativeBuildInputs;
+
+          buildInputs = buildInputs ++ (with pkgs; [ godot ]);
         };
       }
     );
