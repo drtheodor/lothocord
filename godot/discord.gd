@@ -37,7 +37,7 @@ var _heartbeat_interval: int
 var _last_heartbeat: int = -1
 
 var guild_cache: Dictionary[StringName, Guild] = {}
-# var channel_cache: Dictionary[StringName, Channel] = {}
+var channel_cache: Dictionary[StringName, Channel] = {}
 #var message_cache: Dictionary[String, Message] = {}
 
 var image_cache: ImageCache = ImageCache.new(http)
@@ -156,9 +156,9 @@ func _on_gateway_message(socket: WebSocketPeer, some_json: Variant) -> void:
 					var new_guild: Guild = Guild.from_json(raw_guild)
 					self.guild_cache[new_guild.guild_id] = new_guild
 
-					# for guild_channel: Channel in new_guild.channels:
-					# 	self.channel_cache[guild_channel.channel_id] = guild_channel
-
+					for guild_channel: Channel in new_guild.channels:
+						self.channel_cache[guild_channel.channel_id] = guild_channel
+				
 				var _private_channels: Array = some_data["private_channels"]
 				var _users: Array = some_data["users"]
 
