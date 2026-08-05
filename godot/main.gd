@@ -15,7 +15,7 @@ func _ready() -> void:
 	Discord.guild = OS.get_environment("GUILD")
 	Discord.channel = OS.get_environment("CHANNEL")
 	
-	Discord.connect_to_disocrd()
+	Discord.connect_to_discord()
 	
 	Discord.on_ready.connect(self._on_discord_ready)
 	Discord.on_message.connect(self.message_list.add_message)

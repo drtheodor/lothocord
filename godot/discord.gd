@@ -55,7 +55,7 @@ func _ready() -> void:
 
 	#self.on_message.connect(self._on_message)
 
-func connect_to_disocrd() -> void:
+func connect_to_discord() -> void:
 	var err: Error = self._gateway.connect_to_url(WEBSOCKET_URL)
 
 	if err == OK:
@@ -162,7 +162,7 @@ func _on_gateway_message(socket: WebSocketPeer, some_json: Variant) -> void:
 				var _private_channels: Array = some_data["private_channels"]
 				var _users: Array = some_data["users"]
 
-				var all_session: Variant = some_data["sessions"][0]
+				var all_session: Variant = some_data["sessions"].get(0)
 
 				socket.send_text(JSON.stringify({
 					"op": 4, # Voice State Update
@@ -178,15 +178,18 @@ func _on_gateway_message(socket: WebSocketPeer, some_json: Variant) -> void:
 
 				self.guild = guild
 
-				socket.send_text(JSON.stringify({
-					"op": 3, # Presence Update
-					"d": {
-						"status": all_session["status"],
-						"since": 0,
-						"activities": all_session["activities"],
-						"afk": false
-					}
-				}))
+				if all_session:
+					socket.send_text(JSON.stringify({
+						"op": 3, # Presence Update
+						"d": {
+							"status": all_session["status"],
+							"since": 0,
+							"activities": all_session["activities"],
+							"afk": false
+						}
+					}))
+				else:
+					push_warning("No session found!")
 
 				socket.send_text(JSON.stringify({
 					"op": 41,
