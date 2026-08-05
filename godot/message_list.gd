@@ -98,6 +98,7 @@ func _load_avatar(msg: Message, msg_idx: int) -> void:
 
 	if texture:
 		_create_message_rid(msg_idx, texture)
+		queue_redraw()
 		return
 
 	texture = await Discord.image_cache.get_or_request(url, "webp")
@@ -115,9 +116,10 @@ func _create_message_rid(msg_idx: int, texture: Texture2D) -> void:
 	var rid: RID = RenderingServer.canvas_item_create()
 	RenderingServer.canvas_item_set_parent(rid, get_canvas_item())
 	RenderingServer.canvas_item_set_material(rid, self.avatar_material)
-
-	var rect: Rect2 = Rect2(0, 0, self.avatar_size, self.avatar_size)
-	RenderingServer.canvas_item_add_texture_rect(rid, rect, texture)
+	
+	var dest_rect: Rect2 = Rect2(0, 0, self.avatar_size, self.avatar_size)
+	texture.draw_rect(rid, dest_rect, false)
+	
 	RenderingServer.canvas_item_set_visible(rid, false)
 	_message_rids[msg_idx] = rid
 
