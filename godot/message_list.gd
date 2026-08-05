@@ -279,7 +279,7 @@ func _draw() -> void:
 		current_y = item_top
 
 		# Culling
-		if item_top + item_height < 0 and item_top > size.y:
+		if item_top + item_height < 0 or item_top > size.y:
 			if _message_rids.has(i):
 				RenderingServer.canvas_item_set_visible(_message_rids[i], false)
 			continue
