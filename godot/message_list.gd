@@ -487,3 +487,6 @@ func _notification(what: int) -> void:
 		_layout_cache.clear()
 		_update_layouts_if_needed()
 		queue_redraw()
+
+func _exit_tree() -> void:
+	clear_messages()
